@@ -1,0 +1,1 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Lilwero20/KatoHub/refs/heads/main/KatoHub"))()

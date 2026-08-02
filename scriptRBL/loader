@@ -1,0 +1,95 @@
+local cloneref = (cloneref or clonereference or function(instance)
+    return instance
+end)
+
+local Players = cloneref(game:GetService("Players"))
+local VirtualUser = cloneref(game:GetService("VirtualUser"))
+local LPlayer = Players.LocalPlayer
+
+repeat task.wait() until game:IsLoaded() and LPlayer
+
+LPlayer.Idled:Connect(function()
+    pcall(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+end)
+
+local Loader = {}
+
+Loader.Files = {
+    ["Blox Fruit"] = {
+        File = "BLFR/main.lua",
+        GameId = 994732206
+    },
+    ["The strongest Battlegrounds"] = {
+        File = "The_strongest_Battlegrounds/main.lua",
+        GameId = 3808081382
+    },
+    ["+1 Keyboard Speed chocolate"] = {
+        File = "1_Keyboard_Speed/main.lua",
+        GameId = 9584852943
+    },
+    ["Jujutsu Shenanigans"] = {
+        File = "Jujutsu_shenanigans/main.lua",
+        GameId = 3508322461
+    },
+    ["Animal Hospital"] = {
+        File = "Animal_Hospital/main.lua",
+        GameId = 10148749921
+    },
+    ["99 Night"] = {
+        File = "99_Night/main.lua",
+        GameId = 7326934954
+    },
+    ["Anime Expeditions"] = {
+        File = "Anime_Expeditions/main.lua",
+        GameId = 7613921865
+    },
+    ["Iron Soul"] = {
+        File = "Iron_Soul/main.lua",
+        GameId = 9910245722
+    },
+}
+
+print(game.GameId)
+
+print("test start")
+
+function Loader:LoadByGameId(GameId)
+    print("first test checkpoint")
+
+    for GameName, Data in pairs(self.Files) do
+        print("Checking:", GameName, Data.GameId)
+
+        if Data.GameId == GameId then
+            print("Matched!_third test checkpoint")
+
+            local Url = "https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/" .. Data.File
+
+            print("Loading:", Url)
+
+            local Success, Result = pcall(function()
+                return loadstring(game:HttpGet(Url))()
+            end)
+
+            if Success then
+                print("✅ Loaded:", GameName)
+            else
+                warn("❌ Load failed:", Result)
+            end
+
+            return
+        end
+    end
+
+    print("No match_third test checkpoint")
+    warn("UNSUPPORTED GAME")
+end
+
+print("fourth test checkpoint")
+Loader:LoadByGameId(game.GameId)
+print("end test")
+print("Loader is running")
+
+return Loader
