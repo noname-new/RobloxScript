@@ -54,16 +54,13 @@ Loader.Files = {
 
 print(game.GameId)
 
-print("test start")
-
 function Loader:LoadByGameId(GameId)
-    print("first test checkpoint")
 
     for GameName, Data in pairs(self.Files) do
         print("Checking:", GameName, Data.GameId)
 
         if Data.GameId == GameId then
-            print("Matched!_third test checkpoint")
+            print("Matched!")
 
             local Url = "https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/" .. Data.File
 
@@ -83,13 +80,10 @@ function Loader:LoadByGameId(GameId)
         end
     end
 
-    print("No match_third test checkpoint")
+    print("No match")
     warn("UNSUPPORTED GAME")
 end
 
-print("fourth test checkpoint")
 Loader:LoadByGameId(game.GameId)
-print("end test")
-print("Loader is running")
 
 return Loader
