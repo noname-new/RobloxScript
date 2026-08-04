@@ -22,6 +22,18 @@ Loader.Files = {
         File = "BLFR/main.lua",
         GameId = 994732206
     },
+    ["DOORS"] = {
+        File = "DOORS/main.lua",
+        GameId = 2440500124
+    },
+    ["BLADE BALL"] = {
+        File = "Blade_Ball/main.lua",
+        GameId = 4777817887
+    },
+    ["HONKAI STAR RAIL SIMULATOR"] = {
+        File = "Honkai_Star_Rail_Simulator/main.lua",
+        GameId = 5477548919
+    },
     ["The strongest Battlegrounds"] = {
         File = "The_strongest_Battlegrounds/main.lua",
         GameId = 3808081382
@@ -32,7 +44,7 @@ Loader.Files = {
     },
     ["Jujutsu Shenanigans"] = {
         File = "Jujutsu_shenanigans/main.lua",
-        GameId = 3508322461
+        GameId = 3508322461``
     },
     ["Animal Hospital"] = {
         File = "Animal_Hospital/main.lua",
@@ -62,7 +74,7 @@ function Loader:LoadByGameId(GameId)
         if Data.GameId == GameId then
             print("Matched!")
 
-            local Url = "https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/" .. Data.File
+            local Url = "https://raw.githubusercontent.com/noname-new/RobloxScript/refs/scriptRBL/" .. Data.File
 
             print("Loading:", Url)
 
@@ -80,10 +92,10 @@ function Loader:LoadByGameId(GameId)
         end
     end
 
-    print("No match")
     warn("UNSUPPORTED GAME")
 end
 
 Loader:LoadByGameId(game.GameId)
+print("Loader is running")
 
 return Loader
