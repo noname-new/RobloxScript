@@ -89,7 +89,7 @@ function Loader:LoadByGameId(GameId)
 
             print("Matched:", GameName)
 
-            local Url = "https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/scriptRBL/" .. Data.File
+            local Url = "https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/" .. Data.File
 
             print("Loading:", Url)
 
