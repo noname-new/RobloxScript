@@ -1,12 +1,15 @@
-local cloneref = (cloneref or clonereference or function(instance)
+local cloneref = cloneref or clonereference or function(instance)
     return instance
-end)
+end
 
 local Players = cloneref(game:GetService("Players"))
 local VirtualUser = cloneref(game:GetService("VirtualUser"))
-local LPlayer = Players.LocalPlayer
 
-repeat task.wait() until game:IsLoaded() and LPlayer
+repeat
+    task.wait()
+until game:IsLoaded() and Players.LocalPlayer
+
+local LPlayer = Players.LocalPlayer
 
 LPlayer.Idled:Connect(function()
     pcall(function()
@@ -22,59 +25,71 @@ Loader.Files = {
         File = "BLFR/main.lua",
         GameId = 994732206
     },
+
     ["DOORS"] = {
         File = "DOORS/main.lua",
         GameId = 2440500124
     },
+
     ["BLADE BALL"] = {
         File = "Blade_Ball/main.lua",
         GameId = 4777817887
     },
+
     ["HONKAI STAR RAIL SIMULATOR"] = {
         File = "Honkai_Star_Rail_Simulator/main.lua",
         GameId = 5477548919
     },
+
     ["The strongest Battlegrounds"] = {
         File = "The_strongest_Battlegrounds/main.lua",
         GameId = 3808081382
     },
+
     ["+1 Keyboard Speed chocolate"] = {
         File = "1_Keyboard_Speed/main.lua",
         GameId = 9584852943
     },
+
     ["Jujutsu Shenanigans"] = {
         File = "Jujutsu_shenanigans/main.lua",
-        GameId = 3508322461``
+        GameId = 3508322461
     },
+
     ["Animal Hospital"] = {
         File = "Animal_Hospital/main.lua",
         GameId = 10148749921
     },
+
     ["99 Night"] = {
         File = "99_Night/main.lua",
         GameId = 7326934954
     },
+
     ["Anime Expeditions"] = {
         File = "Anime_Expeditions/main.lua",
         GameId = 7613921865
     },
+
     ["Iron Soul"] = {
         File = "Iron_Soul/main.lua",
         GameId = 9910245722
     },
 }
 
-print(game.GameId)
+print("Current GameId:", game.GameId)
 
 function Loader:LoadByGameId(GameId)
 
     for GameName, Data in pairs(self.Files) do
-        print("Checking:", GameName, Data.GameId)
 
-        if Data.GameId == GameId then
-            print("Matched!")
+        print(("Checking %s (%d)"):format(GameName, Data.GameId))
 
-            local Url = "https://raw.githubusercontent.com/noname-new/RobloxScript/refs/scriptRBL/" .. Data.File
+        if tonumber(Data.GameId) == tonumber(GameId) then
+
+            print("Matched:", GameName)
+
+            local Url = "https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/scriptRBL/" .. Data.File
 
             print("Loading:", Url)
 
@@ -83,19 +98,20 @@ function Loader:LoadByGameId(GameId)
             end)
 
             if Success then
-                print("✅ Loaded:", GameName)
+                print("Loaded:", GameName)
             else
-                warn("❌ Load failed:", Result)
+                warn("Load failed:", Result)
             end
 
             return
         end
     end
 
-    warn("UNSUPPORTED GAME")
+    warn(("UNSUPPORTED GAME (%d)"):format(GameId))
 end
 
 Loader:LoadByGameId(game.GameId)
+
 print("Loader is running")
 
 return Loader
