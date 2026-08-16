@@ -1,5 +1,5 @@
 --========================================================
--- PLAYER TELEPORT CONTROL
+-- PLAYER TELEPORT CONTROL - FIXED VERSION
 -- Lying Follow + Teleport All + Auto Reset
 --========================================================
 
@@ -20,6 +20,7 @@ end
 
 local destroyed = false
 local connections = {}
+local isCleaning = false
 
 local function addConnection(connection)
     table.insert(connections, connection)
@@ -32,7 +33,6 @@ local function disconnectAll()
             connection:Disconnect()
         end)
     end
-
     table.clear(connections)
 end
 
@@ -41,10 +41,12 @@ end
 --========================================================
 
 local TELEPORT_THRESHOLD = 10
-local CHECK_DELAY = 0.25
+local CHECK_DELAY = 0.3
 local RETRY_DELAY = 0.5
 local FOLLOW_DISTANCE = 4
-local TELE_ALL_DELAY = 0.15
+local TELE_ALL_DELAY = 0.2
+local MAX_TELEPORT_RETRIES = 5
+local MAX_TELE_ALL_CYCLES = 50
 
 --========================================================
 -- STATE
@@ -56,8 +58,8 @@ local autoResetEnabled = false
 
 local selectedPlayer = nil
 
-local currentTween = nil
 local followConnection = nil
+local teleAllCoroutine = nil
 
 local teleportBusy = false
 local retryCount = 0
@@ -66,7 +68,6 @@ local originalRootJoint = nil
 local originalRootC0 = nil
 
 local cameraAnchor = nil
-local characterGeneration = 0
 
 --========================================================
 -- CHARACTER HELPERS
@@ -85,26 +86,19 @@ local function getHRP(character)
 end
 
 local function getRootJoint(character)
-    if not character then
-        return nil
-    end
-
+    if not character then return nil end
+    
     local hrp = character:FindFirstChild("HumanoidRootPart")
-
     if hrp then
         local joint = hrp:FindFirstChild("RootJoint")
-
-        if joint then
-            return joint
-        end
+        if joint then return joint end
     end
-
+    
     local lowerTorso = character:FindFirstChild("LowerTorso")
-
     if lowerTorso then
         return lowerTorso:FindFirstChild("Root")
     end
-
+    
     return nil
 end
 
@@ -114,65 +108,39 @@ end
 
 local function saveRootJoint(character)
     local joint = getRootJoint(character)
-
-    if not joint then
-        return nil
-    end
-
-    -- Character mới → lưu C0 mới
+    if not joint then return nil end
+    
     if originalRootJoint ~= joint then
         originalRootJoint = joint
         originalRootC0 = joint.C0
     end
-
+    
     return joint
 end
 
 local function setLying(character, state)
-    if not character then
-        return
-    end
-
+    if not character then return end
+    
     local joint = saveRootJoint(character)
-
-    if not joint then
-        return
-    end
-
+    if not joint then return end
+    
     if state then
-
-        joint.C0 =
-            CFrame.new(0, 0, 0)
-            * CFrame.Angles(
-                math.rad(-90),
-                0,
-                math.rad(180)
-            )
-
+        joint.C0 = CFrame.new(0, 0, 0) * CFrame.Angles(math.rad(-90), 0, math.rad(180))
     else
-
-        if joint == originalRootJoint
-            and originalRootC0 then
-
+        if joint == originalRootJoint and originalRootC0 then
             joint.C0 = originalRootC0
         end
     end
 end
 
 local function restoreRootJoint()
-
-    if originalRootJoint
-        and originalRootC0 then
-
+    if originalRootJoint and originalRootC0 then
         pcall(function()
-
             if originalRootJoint.Parent then
                 originalRootJoint.C0 = originalRootC0
             end
-
         end)
     end
-
     originalRootJoint = nil
     originalRootC0 = nil
 end
@@ -184,36 +152,26 @@ end
 local collisionBackup = {}
 
 local function setCollision(character, enabled)
-
-    if not character then
-        return
-    end
-
+    if not character then return end
+    
     for _, object in ipairs(character:GetDescendants()) do
-
         if object:IsA("BasePart") then
-
             if collisionBackup[object] == nil then
                 collisionBackup[object] = object.CanCollide
             end
-
             object.CanCollide = enabled
         end
     end
 end
 
 local function restoreCollision()
-
     for part, oldValue in pairs(collisionBackup) do
-
         if part and part.Parent then
-
             pcall(function()
                 part.CanCollide = oldValue
             end)
         end
     end
-
     table.clear(collisionBackup)
 end
 
@@ -222,25 +180,20 @@ end
 --========================================================
 
 local function restoreCamera()
-
     local camera = workspace.CurrentCamera
-
+    
     if cameraAnchor then
-
         pcall(function()
             cameraAnchor:Destroy()
         end)
-
         cameraAnchor = nil
     end
-
+    
     if camera then
-
         local character = getCharacter()
         local humanoid = getHumanoid(character)
-
+        
         camera.CameraType = Enum.CameraType.Custom
-
         if humanoid then
             camera.CameraSubject = humanoid
         end
@@ -248,19 +201,16 @@ local function restoreCamera()
 end
 
 local function lockCamera()
-
     local camera = workspace.CurrentCamera
     local character = getCharacter()
     local hrp = getHRP(character)
-
-    if not camera or not hrp then
-        return
-    end
-
+    
+    if not camera or not hrp then return end
+    
     if cameraAnchor then
         cameraAnchor:Destroy()
     end
-
+    
     cameraAnchor = Instance.new("Part")
     cameraAnchor.Name = "TeleportCameraAnchor"
     cameraAnchor.Size = Vector3.new(1, 1, 1)
@@ -269,7 +219,7 @@ local function lockCamera()
     cameraAnchor.CanCollide = false
     cameraAnchor.Transparency = 1
     cameraAnchor.Parent = workspace
-
+    
     camera.CameraType = Enum.CameraType.Custom
     camera.CameraSubject = cameraAnchor
 end
@@ -427,37 +377,28 @@ local dragStart
 local startPosition
 
 addConnection(Main.InputBegan:Connect(function(input)
-
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
         startPosition = Main.Position
-
+        
         input.Changed:Connect(function()
-
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
             end
-
         end)
     end
 end))
 
 addConnection(UserInputService.InputChanged:Connect(function(input)
-
-    if not dragging then
+    if not dragging then return end
+    
+    if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then
         return
     end
-
-    if input.UserInputType ~= Enum.UserInputType.MouseMovement
-        and input.UserInputType ~= Enum.UserInputType.Touch then
-        return
-    end
-
+    
     local delta = input.Position - dragStart
-
+    
     Main.Position = UDim2.new(
         startPosition.X.Scale,
         startPosition.X.Offset + delta.X,
@@ -471,72 +412,49 @@ end))
 --========================================================
 
 local function refreshPlayerList()
-
     for _, child in ipairs(PlayerList:GetChildren()) do
-
         if child:IsA("TextButton") then
             child:Destroy()
         end
     end
-
-    for _, player in ipairs(Players:GetPlayers()) do
-
+    
+    local players = Players:GetPlayers()
+    for _, player in ipairs(players) do
         if player ~= LocalPlayer then
-
             local button = Instance.new("TextButton")
             button.Parent = PlayerList
             button.Size = UDim2.new(1, -5, 0, 28)
             button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            button.Text =
-                player.DisplayName
-                .. "  @"
-                .. player.Name
+            button.Text = player.DisplayName .. "  @" .. player.Name
             button.TextColor3 = Color3.fromRGB(255, 255, 255)
             button.TextSize = 12
             button.Font = Enum.Font.SourceSans
-
+            
             local corner = Instance.new("UICorner")
             corner.CornerRadius = UDim.new(0, 5)
             corner.Parent = button
-
+            
             addConnection(button.MouseButton1Click:Connect(function()
-
                 selectedPlayer = player
-
-                Status.Text =
-                    "Selected: "
-                    .. player.DisplayName
-
+                Status.Text = "Selected: " .. player.DisplayName
+                
                 for _, other in ipairs(PlayerList:GetChildren()) do
-
                     if other:IsA("TextButton") then
-                        other.BackgroundColor3 =
-                            Color3.fromRGB(60, 60, 60)
+                        other.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
                     end
                 end
-
-                button.BackgroundColor3 =
-                    Color3.fromRGB(50, 150, 80)
+                
+                button.BackgroundColor3 = Color3.fromRGB(50, 150, 80)
             end))
         end
     end
-
+    
     task.defer(function()
-
-        PlayerList.CanvasSize =
-            UDim2.new(
-                0,
-                0,
-                0,
-                ListLayout.AbsoluteContentSize.Y + 8
-            )
+        PlayerList.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 8)
     end)
 end
 
-addConnection(
-    RefreshButton.MouseButton1Click:Connect(refreshPlayerList)
-)
-
+addConnection(RefreshButton.MouseButton1Click:Connect(refreshPlayerList))
 refreshPlayerList()
 
 --========================================================
@@ -544,55 +462,40 @@ refreshPlayerList()
 --========================================================
 
 local function stopFollow()
-
     lyingEnabled = false
-
+    
     if followConnection then
-
         pcall(function()
             followConnection:Disconnect()
         end)
-
         followConnection = nil
     end
 end
 
 local function startFollow()
-
     if followConnection then
         followConnection:Disconnect()
     end
-
-    followConnection =
-        RunService.RenderStepped:Connect(function()
-
-            if destroyed or not lyingEnabled then
-                return
-            end
-
-            local target = selectedPlayer
-
-            if not target or not target.Parent then
-                return
-            end
-
-            local character = getCharacter()
-            local targetCharacter = target.Character
-
-            local hrp = getHRP(character)
-            local targetHRP = getHRP(targetCharacter)
-
-            if hrp and targetHRP then
-
-                hrp.CFrame =
-                    targetHRP.CFrame
-                    * CFrame.new(
-                        0,
-                        -2.5,
-                        FOLLOW_DISTANCE
-                    )
-            end
-        end)
+    
+    followConnection = RunService.Heartbeat:Connect(function()
+        if destroyed or not lyingEnabled then return end
+        
+        local target = selectedPlayer
+        if not target or not target.Parent then return end
+        
+        local character = getCharacter()
+        local targetCharacter = target.Character
+        if not character or not targetCharacter then return end
+        
+        local hrp = getHRP(character)
+        local targetHRP = getHRP(targetCharacter)
+        
+        if hrp and targetHRP then
+            pcall(function()
+                hrp.CFrame = targetHRP.CFrame * CFrame.new(0, -2.5, FOLLOW_DISTANCE)
+            end)
+        end
+    end)
 end
 
 --========================================================
@@ -600,29 +503,18 @@ end
 --========================================================
 
 local function resetCharacter()
-
     local character = getCharacter()
     local humanoid = getHumanoid(character)
-
+    
     if not humanoid or humanoid.Health <= 0 then
         return false
     end
-
-    if currentTween then
-
-        pcall(function()
-            currentTween:Cancel()
-        end)
-
-        currentTween = nil
-    end
-
+    
     restoreCamera()
     restoreCollision()
     restoreRootJoint()
-
+    
     humanoid.Health = 0
-
     return true
 end
 
@@ -631,37 +523,26 @@ end
 --========================================================
 
 local function waitForRespawn(oldCharacter)
-
-    while not destroyed do
-
+    local timeout = 10
+    local elapsed = 0
+    
+    while not destroyed and elapsed < timeout do
         local currentCharacter = LocalPlayer.Character
-
-        if currentCharacter
-            and currentCharacter ~= oldCharacter then
-
-            local humanoid =
-                currentCharacter:WaitForChild(
-                    "Humanoid",
-                    10
-                )
-
-            local hrp =
-                currentCharacter:WaitForChild(
-                    "HumanoidRootPart",
-                    10
-                )
-
+        
+        if currentCharacter and currentCharacter ~= oldCharacter then
+            local humanoid = currentCharacter:FindFirstChild("Humanoid")
+            local hrp = currentCharacter:FindFirstChild("HumanoidRootPart")
+            
             if humanoid and hrp then
-
                 task.wait(0.5)
-
                 return currentCharacter
             end
         end
-
+        
         task.wait(0.1)
+        elapsed += 0.1
     end
-
+    
     return nil
 end
 
@@ -669,35 +550,27 @@ end
 -- CHECK TELEPORT
 --========================================================
 
-local function checkTeleport(
-    oldPosition,
-    oldCharacter
-)
-
+local function checkTeleport(oldPosition, oldCharacter)
     task.wait(CHECK_DELAY)
-
+    
+    if destroyed then return false, "DESTROYED" end
+    
     local currentCharacter = getCharacter()
-
-    -- Respawn/reset không được tính là teleport
-    if not currentCharacter
-        or currentCharacter ~= oldCharacter then
-
+    if not currentCharacter or currentCharacter ~= oldCharacter then
         return false, "RESET"
     end
-
+    
     local hrp = getHRP(currentCharacter)
-
     if not hrp then
         return false, "NO_HRP"
     end
-
-    local distance =
-        (hrp.Position - oldPosition).Magnitude
-
+    
+    local distance = (hrp.Position - oldPosition).Magnitude
+    
     if distance >= TELEPORT_THRESHOLD then
         return true, distance
     end
-
+    
     return false, distance
 end
 
@@ -706,240 +579,141 @@ end
 --========================================================
 
 local function teleportToPlayer(target)
-
-    if teleportBusy then
+    if teleportBusy or destroyed then
         return false
     end
-
-    if not target
-        or target == LocalPlayer
-        or not target.Parent then
-
+    
+    if not target or target == LocalPlayer or not target.Parent then
         return false
     end
-
+    
     local targetCharacter = target.Character
     local targetHRP = getHRP(targetCharacter)
     local targetHumanoid = getHumanoid(targetCharacter)
-
-    if not targetHRP
-        or not targetHumanoid
-        or targetHumanoid.Health <= 0 then
-
+    
+    if not targetHRP or not targetHumanoid or targetHumanoid.Health <= 0 then
         return false
     end
-
+    
     local character = getCharacter()
     local hrp = getHRP(character)
-
+    
     if not character or not hrp then
         return false
     end
-
+    
     teleportBusy = true
-
-    -- Vị trí TRƯỚC tele
+    
     local oldPosition = hrp.Position
     local oldCharacter = character
-
-    local targetPosition =
-        targetHRP.Position
-        - Vector3.new(0, 4, 0)
-
-    local targetCFrame =
-        CFrame.lookAt(
-            targetPosition,
-            targetHRP.Position
-        )
-
-    if currentTween then
-
-        pcall(function()
-            currentTween:Cancel()
-        end)
-    end
-
-    currentTween = TweenService:Create(
-        hrp,
-        TweenInfo.new(
-            0.02,
-            Enum.EasingStyle.Linear
-        ),
-        {
-            CFrame = targetCFrame
-        }
-    )
-
-    currentTween:Play()
-
-    local success, result =
-        checkTeleport(
-            oldPosition,
-            oldCharacter
-        )
-
+    
+    local targetPosition = targetHRP.Position - Vector3.new(0, 4, 0)
+    local targetCFrame = CFrame.lookAt(targetPosition, targetHRP.Position)
+    
+    -- Teleport using CFrame directly
+    pcall(function()
+        hrp.CFrame = targetCFrame
+    end)
+    
+    -- Wait for server to update
+    task.wait(0.15)
+    
+    local success, result = checkTeleport(oldPosition, oldCharacter)
+    
     teleportBusy = false
-
-    --====================================================
-    -- SUCCESS
-    --====================================================
-
+    
     if success then
-
         retryCount = 0
-
-        Status.Text =
-            "TELE SUCCESS  ✓  "
-            .. math.floor(result)
-            .. " studs"
-
+        Status.Text = "TELE SUCCESS ✓ " .. math.floor(result) .. " studs"
         return true
     end
-
-    --====================================================
-    -- RESET HAPPENED
-    --====================================================
-
-    if result == "RESET"
-        or result == "NO_HRP" then
-
+    
+    if result == "RESET" or result == "NO_HRP" or result == "DESTROYED" then
         return false
     end
-
-    --====================================================
-    -- FAKE TELE
-    --====================================================
-
-    Status.Text =
-        "Fake Tele  •  "
-        .. math.floor(result)
-        .. " studs"
-
-    -- Auto Reset OFF → không reset
+    
+    Status.Text = "Fake Tele • " .. math.floor(result) .. " studs"
+    
     if not autoResetEnabled then
         return false
     end
-
-    --====================================================
-    -- AUTO RESET VÔ HẠN
-    --====================================================
-
-    while autoResetEnabled
-        and not destroyed
-        and not success do
-
+    
+    -- Auto Reset logic
+    local retryAttempts = 0
+    
+    while autoResetEnabled and not destroyed and not success and retryAttempts < MAX_TELEPORT_RETRIES do
+        retryAttempts += 1
         retryCount += 1
-
-        Status.Text =
-            "Fake Tele → Reset #"
-            .. retryCount
-
-        local resetCharacterObject =
-            getCharacter()
-
+        
+        Status.Text = "Fake Tele → Reset #" .. retryCount
+        
+        local resetCharacterObject = getCharacter()
+        if not resetCharacterObject then
+            task.wait(0.5)
+            continue
+        end
+        
         if not resetCharacter() then
             task.wait(0.5)
             continue
         end
-
+        
         Status.Text = "Resetting..."
-
-        local newCharacter =
-            waitForRespawn(
-                resetCharacterObject
-            )
-
+        
+        local newCharacter = waitForRespawn(resetCharacterObject)
+        
         if destroyed then
             return false
         end
-
-        if newCharacter then
-
-            -- Reset/respawn THÀNH CÔNG
-            Status.Text = "success"
-
-            task.wait(RETRY_DELAY)
-
-            -- Nếu chức năng đã bị tắt trong lúc reset
-            if not autoResetEnabled then
-                return false
-            end
-
-            --================================================
-            -- THỬ TELE LẠI
-            --================================================
-
-            local newHRP = getHRP(newCharacter)
-
-            if not newHRP then
-                continue
-            end
-
-            local targetChar = target.Character
-            local targetHRP2 = getHRP(targetChar)
-            local targetHumanoid2 =
-                getHumanoid(targetChar)
-
-            if not targetHRP2
-                or not targetHumanoid2
-                or targetHumanoid2.Health <= 0 then
-
-                return false
-            end
-
-            local beforeRetry =
-                newHRP.Position
-
-            local retryCFrame =
-                CFrame.lookAt(
-                    targetHRP2.Position
-                    - Vector3.new(0, 4, 0),
-                    targetHRP2.Position
-                )
-
-            currentTween =
-                TweenService:Create(
-                    newHRP,
-                    TweenInfo.new(
-                        0.02,
-                        Enum.EasingStyle.Linear
-                    ),
-                    {
-                        CFrame = retryCFrame
-                    }
-                )
-
-            currentTween:Play()
-
-            task.wait(CHECK_DELAY)
-
-            local afterRetry =
-                newHRP.Position
-
-            local retryDistance =
-                (afterRetry - beforeRetry).Magnitude
-
-            if retryDistance >= TELEPORT_THRESHOLD then
-
-                Status.Text =
-                    "TELE SUCCESS  ✓  "
-                    .. math.floor(retryDistance)
-                    .. " studs"
-
-                retryCount = 0
-
-                return true
-            end
-
-            Status.Text =
-                "Fake Tele again → retry"
-
-            success = false
-
-            task.wait(RETRY_DELAY)
+        
+        if not newCharacter then
+            continue
         end
+        
+        Status.Text = "Retrying teleport..."
+        task.wait(RETRY_DELAY)
+        
+        if not autoResetEnabled or destroyed then
+            return false
+        end
+        
+        local newHRP = getHRP(newCharacter)
+        if not newHRP then
+            continue
+        end
+        
+        local targetChar = target.Character
+        local targetHRP2 = getHRP(targetChar)
+        local targetHumanoid2 = getHumanoid(targetChar)
+        
+        if not targetHRP2 or not targetHumanoid2 or targetHumanoid2.Health <= 0 then
+            return false
+        end
+        
+        local beforeRetry = newHRP.Position
+        local retryCFrame = CFrame.lookAt(targetHRP2.Position - Vector3.new(0, 4, 0), targetHRP2.Position)
+        
+        pcall(function()
+            newHRP.CFrame = retryCFrame
+        end)
+        
+        task.wait(0.15)
+        
+        local afterRetry = newHRP.Position
+        local retryDistance = (afterRetry - beforeRetry).Magnitude
+        
+        if retryDistance >= TELEPORT_THRESHOLD then
+            Status.Text = "TELE SUCCESS ✓ " .. math.floor(retryDistance) .. " studs"
+            retryCount = 0
+            return true
+        end
+        
+        Status.Text = "Fake Tele again → retry " .. retryAttempts .. "/" .. MAX_TELEPORT_RETRIES
+        success = false
+        
+        task.wait(RETRY_DELAY)
     end
-
+    
     return false
 end
 
@@ -947,379 +721,239 @@ end
 -- LYING BUTTON
 --========================================================
 
-addConnection(
-    LyingButton.MouseButton1Click:Connect(function()
-
-        if lyingEnabled then
-
-            stopFollow()
-
-            local character = getCharacter()
-
-            if character then
-                setLying(character, false)
-                setCollision(character, true)
-            end
-
-            restoreCamera()
-
-            LyingButton.Text =
-                "Lying Follow: OFF"
-
-            LyingButton.BackgroundColor3 =
-                Color3.fromRGB(70, 70, 70)
-
-            Status.Text =
-                "Lying stopped"
-
-            return
-        end
-
-        if not selectedPlayer then
-
-            Status.Text =
-                "Hãy chọn player trước!"
-
-            return
-        end
-
-        if not selectedPlayer.Parent then
-
-            Status.Text =
-                "Player không còn trong server"
-
-            return
-        end
-
-        lyingEnabled = true
-
+addConnection(LyingButton.MouseButton1Click:Connect(function()
+    if lyingEnabled then
+        stopFollow()
+        
         local character = getCharacter()
-
         if character then
-
-            setLying(character, true)
-            setCollision(character, false)
-
-            lockCamera()
+            setLying(character, false)
+            setCollision(character, true)
         end
-
-        LyingButton.Text =
-            "Lying Follow: ON"
-
-        LyingButton.BackgroundColor3 =
-            Color3.fromRGB(50, 180, 70)
-
-        Status.Text =
-            "Following: "
-            .. selectedPlayer.DisplayName
-
-        startFollow()
-    end)
-)
+        
+        restoreCamera()
+        
+        LyingButton.Text = "Lying Follow: OFF"
+        LyingButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        Status.Text = "Lying stopped"
+        
+        return
+    end
+    
+    if not selectedPlayer then
+        Status.Text = "Please select a player first!"
+        return
+    end
+    
+    if not selectedPlayer.Parent then
+        Status.Text = "Player is no longer in server"
+        return
+    end
+    
+    lyingEnabled = true
+    
+    local character = getCharacter()
+    if character then
+        setLying(character, true)
+        setCollision(character, false)
+        lockCamera()
+    end
+    
+    LyingButton.Text = "Lying Follow: ON"
+    LyingButton.BackgroundColor3 = Color3.fromRGB(50, 180, 70)
+    Status.Text = "Following: " .. selectedPlayer.DisplayName
+    
+    startFollow()
+end))
 
 --========================================================
 -- TELEPORT ALL
 --========================================================
 
 local function stopTeleAll()
-
     teleAllEnabled = false
     retryCount = 0
-
-    if currentTween then
-
-        pcall(function()
-            currentTween:Cancel()
-        end)
-
-        currentTween = nil
+    
+    if teleAllCoroutine then
+        teleAllCoroutine = nil
     end
 end
 
 local function runTeleportAll()
-
-    while teleAllEnabled and not destroyed do
-
+    local cycles = 0
+    
+    while teleAllEnabled and not destroyed and cycles < MAX_TELE_ALL_CYCLES do
+        cycles += 1
+        
         local players = {}
-
         for _, player in ipairs(Players:GetPlayers()) do
-
-            if player ~= LocalPlayer
-                and player.Parent then
-
+            if player ~= LocalPlayer and player.Parent then
                 local character = player.Character
-                local humanoid =
-                    getHumanoid(character)
-                local hrp =
-                    getHRP(character)
-
-                if humanoid
-                    and hrp
-                    and humanoid.Health > 0 then
-
-                    table.insert(
-                        players,
-                        player
-                    )
+                local humanoid = getHumanoid(character)
+                local hrp = getHRP(character)
+                
+                if humanoid and hrp and humanoid.Health > 0 then
+                    table.insert(players, player)
                 end
             end
         end
-
+        
         if #players == 0 then
-
-            Status.Text =
-                "Không có player hợp lệ"
-
+            Status.Text = "No valid players found"
             break
         end
-
+        
         for _, player in ipairs(players) do
-
-            if not teleAllEnabled
-                or destroyed then
-
+            if not teleAllEnabled or destroyed then
                 break
             end
-
+            
             if player.Parent then
-
                 teleportToPlayer(player)
-
                 task.wait(TELE_ALL_DELAY)
             end
         end
-
-        task.wait()
+        
+        if teleAllEnabled and not destroyed then
+            task.wait(0.5)
+        end
     end
-
+    
     if not destroyed then
-
         teleAllEnabled = false
-
-        TeleAllButton.Text =
-            "Teleport All: OFF"
-
-        TeleAllButton.BackgroundColor3 =
-            Color3.fromRGB(70, 70, 70)
+        TeleAllButton.Text = "Teleport All: OFF"
+        TeleAllButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        Status.Text = "Teleport All completed"
     end
 end
 
-addConnection(
-    TeleAllButton.MouseButton1Click:Connect(function()
-
-        if teleAllEnabled then
-
-            stopTeleAll()
-
-            TeleAllButton.Text =
-                "Teleport All: OFF"
-
-            TeleAllButton.BackgroundColor3 =
-                Color3.fromRGB(70, 70, 70)
-
-            Status.Text =
-                "Teleport All stopped"
-
-            return
-        end
-
-        teleAllEnabled = true
-        retryCount = 0
-
-        TeleAllButton.Text =
-            "Teleport All: ON"
-
-        TeleAllButton.BackgroundColor3 =
-            Color3.fromRGB(50, 180, 70)
-
-        Status.Text =
-            "Teleporting all..."
-
-        task.spawn(runTeleportAll)
-    end)
-)
+addConnection(TeleAllButton.MouseButton1Click:Connect(function()
+    if teleAllEnabled then
+        stopTeleAll()
+        TeleAllButton.Text = "Teleport All: OFF"
+        TeleAllButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        Status.Text = "Teleport All stopped"
+        return
+    end
+    
+    teleAllEnabled = true
+    retryCount = 0
+    
+    TeleAllButton.Text = "Teleport All: ON"
+    TeleAllButton.BackgroundColor3 = Color3.fromRGB(50, 180, 70)
+    Status.Text = "Teleporting all..."
+    
+    teleAllCoroutine = task.spawn(runTeleportAll)
+end))
 
 --========================================================
 -- AUTO RESET BUTTON
 --========================================================
 
-addConnection(
-    AutoResetButton.MouseButton1Click:Connect(function()
-
-        autoResetEnabled =
-            not autoResetEnabled
-
-        if autoResetEnabled then
-
-            AutoResetButton.Text =
-                "Auto Reset: ON"
-
-            AutoResetButton.BackgroundColor3 =
-                Color3.fromRGB(50, 180, 70)
-
-            retryCount = 0
-
-            Status.Text =
-                "Auto Reset enabled"
-
-        else
-
-            AutoResetButton.Text =
-                "Auto Reset: OFF"
-
-            AutoResetButton.BackgroundColor3 =
-                Color3.fromRGB(70, 70, 70)
-
-            retryCount = 0
-
-            Status.Text =
-                "Auto Reset disabled"
-        end
-    end)
-)
+addConnection(AutoResetButton.MouseButton1Click:Connect(function()
+    autoResetEnabled = not autoResetEnabled
+    
+    if autoResetEnabled then
+        AutoResetButton.Text = "Auto Reset: ON"
+        AutoResetButton.BackgroundColor3 = Color3.fromRGB(50, 180, 70)
+        retryCount = 0
+        Status.Text = "Auto Reset enabled"
+    else
+        AutoResetButton.Text = "Auto Reset: OFF"
+        AutoResetButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        retryCount = 0
+        Status.Text = "Auto Reset disabled"
+    end
+end))
 
 --========================================================
 -- CHARACTER ADDED
 --========================================================
 
-addConnection(
-    LocalPlayer.CharacterAdded:Connect(function(character)
-
-        characterGeneration += 1
-
-        -- State của character cũ không được giữ
-        originalRootJoint = nil
-        originalRootC0 = nil
-
-        table.clear(collisionBackup)
-
-        task.wait(0.5)
-
-        if destroyed then
-            return
+addConnection(LocalPlayer.CharacterAdded:Connect(function(character)
+    originalRootJoint = nil
+    originalRootC0 = nil
+    table.clear(collisionBackup)
+    
+    task.wait(0.5)
+    
+    if destroyed then return end
+    
+    if lyingEnabled then
+        setLying(character, true)
+        setCollision(character, false)
+        lockCamera()
+        
+        if selectedPlayer then
+            startFollow()
         end
+    else
+        restoreCamera()
+    end
+end))
 
-        -- Nếu đang Lying thì áp lại cho character mới
+--========================================================
+-- PLAYER JOIN / LEAVE
+--========================================================
+
+addConnection(Players.PlayerAdded:Connect(function()
+    task.wait(0.2)
+    if not destroyed then
+        refreshPlayerList()
+    end
+end))
+
+addConnection(Players.PlayerRemoving:Connect(function(player)
+    if player == selectedPlayer then
+        selectedPlayer = nil
+        
         if lyingEnabled then
-
-            setLying(character, true)
-            setCollision(character, false)
-
-            lockCamera()
-
-            if selectedPlayer then
-                startFollow()
+            stopFollow()
+            local character = getCharacter()
+            if character then
+                setLying(character, false)
+                setCollision(character, true)
             end
-
-        else
-
             restoreCamera()
         end
-    end)
-)
-
---========================================================
--- PLAYER JOIN
---========================================================
-
-addConnection(
-    Players.PlayerAdded:Connect(function()
-
-        task.wait(0.2)
-
-        if not destroyed then
-            refreshPlayerList()
-        end
-    end)
-)
-
---========================================================
--- PLAYER LEAVE
---========================================================
-
-addConnection(
-    Players.PlayerRemoving:Connect(function(player)
-
-        if player == selectedPlayer then
-
-            selectedPlayer = nil
-
-            if lyingEnabled then
-
-                stopFollow()
-
-                local character =
-                    getCharacter()
-
-                if character then
-                    setLying(
-                        character,
-                        false
-                    )
-
-                    setCollision(
-                        character,
-                        true
-                    )
-                end
-
-                restoreCamera()
-            end
-
-            Status.Text =
-                "Target đã rời server"
-        end
-
-        refreshPlayerList()
-    end)
-)
+        
+        Status.Text = "Target has left the server"
+    end
+    
+    refreshPlayerList()
+end))
 
 --========================================================
 -- GLOBAL CLEANUP
 --========================================================
 
 getgenv().PlayerTeleportMenuCleanup = function()
-
-    if destroyed then
-        return
-    end
-
+    if destroyed or isCleaning then return end
+    isCleaning = true
     destroyed = true
-
+    
     lyingEnabled = false
     teleAllEnabled = false
     autoResetEnabled = false
-
+    
     if followConnection then
-
-        pcall(function()
-            followConnection:Disconnect()
-        end)
-
+        pcall(function() followConnection:Disconnect() end)
         followConnection = nil
     end
-
-    if currentTween then
-
-        pcall(function()
-            currentTween:Cancel()
-        end)
-
-        currentTween = nil
-    end
-
+    
+    teleAllCoroutine = nil
+    
     restoreRootJoint()
     restoreCollision()
     restoreCamera()
-
+    
     disconnectAll()
-
+    
     if ScreenGui then
-
-        pcall(function()
-            ScreenGui:Destroy()
-        end)
+        pcall(function() ScreenGui:Destroy() end)
     end
+    
+    isCleaning = false
 end
 
 --========================================================
