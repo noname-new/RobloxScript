@@ -1,12 +1,13 @@
 --========================================================
--- PLAYER TELEPORT CONTROL - FIXED VERSION
--- Lying Follow + Teleport All + Auto Reset
+-- PLAYER TELEPORT CONTROL - COMPLETE VERSION
+-- Press H to hide/show UI
 --========================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -14,7 +15,7 @@ local LocalPlayer = Players.LocalPlayer
 -- CLEANUP INSTANCE CŨ
 --========================================================
 
-if getgenv().PlayerTeleportMenuCleanup then
+if getgenv and getgenv().PlayerTeleportMenuCleanup then
     pcall(getgenv().PlayerTeleportMenuCleanup)
 end
 
@@ -23,17 +24,21 @@ local connections = {}
 local isCleaning = false
 
 local function addConnection(connection)
-    table.insert(connections, connection)
+    if connection then
+        table.insert(connections, connection)
+    end
     return connection
 end
 
 local function disconnectAll()
     for _, connection in ipairs(connections) do
         pcall(function()
-            connection:Disconnect()
+            if connection and connection.Disconnect then
+                connection:Disconnect()
+            end
         end)
     end
-    table.clear(connections)
+    connections = {}
 end
 
 --========================================================
@@ -47,6 +52,7 @@ local FOLLOW_DISTANCE = 4
 local TELE_ALL_DELAY = 0.2
 local MAX_TELEPORT_RETRIES = 5
 local MAX_TELE_ALL_CYCLES = 50
+local HIDE_KEY = Enum.KeyCode.H  -- Phím H để ẩn/hiện UI
 
 --========================================================
 -- STATE
@@ -55,6 +61,7 @@ local MAX_TELE_ALL_CYCLES = 50
 local lyingEnabled = false
 local teleAllEnabled = false
 local autoResetEnabled = false
+local uiVisible = true
 
 local selectedPlayer = nil
 
@@ -78,11 +85,13 @@ local function getCharacter()
 end
 
 local function getHumanoid(character)
-    return character and character:FindFirstChildOfClass("Humanoid")
+    if not character then return nil end
+    return character:FindFirstChildOfClass("Humanoid")
 end
 
 local function getHRP(character)
-    return character and character:FindFirstChild("HumanoidRootPart")
+    if not character then return nil end
+    return character:FindFirstChild("HumanoidRootPart")
 end
 
 local function getRootJoint(character)
@@ -91,12 +100,17 @@ local function getRootJoint(character)
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if hrp then
         local joint = hrp:FindFirstChild("RootJoint")
-        if joint then return joint end
+        if joint and joint:IsA("Motor6D") then
+            return joint
+        end
     end
     
     local lowerTorso = character:FindFirstChild("LowerTorso")
     if lowerTorso then
-        return lowerTorso:FindFirstChild("Root")
+        local joint = lowerTorso:FindFirstChild("Root")
+        if joint and joint:IsA("Motor6D") then
+            return joint
+        end
     end
     
     return nil
@@ -136,7 +150,7 @@ end
 local function restoreRootJoint()
     if originalRootJoint and originalRootC0 then
         pcall(function()
-            if originalRootJoint.Parent then
+            if originalRootJoint and originalRootJoint.Parent then
                 originalRootJoint.C0 = originalRootC0
             end
         end)
@@ -159,7 +173,9 @@ local function setCollision(character, enabled)
             if collisionBackup[object] == nil then
                 collisionBackup[object] = object.CanCollide
             end
-            object.CanCollide = enabled
+            pcall(function()
+                object.CanCollide = enabled
+            end)
         end
     end
 end
@@ -172,7 +188,7 @@ local function restoreCollision()
             end)
         end
     end
-    table.clear(collisionBackup)
+    collisionBackup = {}
 end
 
 --========================================================
@@ -193,10 +209,12 @@ local function restoreCamera()
         local character = getCharacter()
         local humanoid = getHumanoid(character)
         
-        camera.CameraType = Enum.CameraType.Custom
-        if humanoid then
-            camera.CameraSubject = humanoid
-        end
+        pcall(function()
+            camera.CameraType = Enum.CameraType.Custom
+            if humanoid then
+                camera.CameraSubject = humanoid
+            end
+        end)
     end
 end
 
@@ -208,7 +226,9 @@ local function lockCamera()
     if not camera or not hrp then return end
     
     if cameraAnchor then
-        cameraAnchor:Destroy()
+        pcall(function()
+            cameraAnchor:Destroy()
+        end)
     end
     
     cameraAnchor = Instance.new("Part")
@@ -220,8 +240,28 @@ local function lockCamera()
     cameraAnchor.Transparency = 1
     cameraAnchor.Parent = workspace
     
-    camera.CameraType = Enum.CameraType.Custom
-    camera.CameraSubject = cameraAnchor
+    pcall(function()
+        camera.CameraType = Enum.CameraType.Custom
+        camera.CameraSubject = cameraAnchor
+    end)
+end
+
+--========================================================
+-- HIDE/SHOW UI
+--========================================================
+
+local function toggleUI()
+    uiVisible = not uiVisible
+    
+    if ScreenGui and ScreenGui.Parent then
+        ScreenGui.Enabled = uiVisible
+    end
+    
+    if uiVisible then
+        Status.Text = "Status: Ready"
+    else
+        Status.Text = "[UI Hidden] Press H to show"
+    end
 end
 
 --========================================================
@@ -231,7 +271,7 @@ end
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "PlayerTeleportMenu"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Parent = CoreGui
 
 local Main = Instance.new("Frame")
 Main.Parent = ScreenGui
@@ -253,7 +293,7 @@ local Title = Instance.new("TextLabel")
 Title.Parent = Main
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
-Title.Text = "Teleport Control"
+Title.Text = "Teleport Control [H to hide]"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -373,8 +413,8 @@ AutoResetCorner.Parent = AutoResetButton
 --========================================================
 
 local dragging = false
-local dragStart
-local startPosition
+local dragStart = nil
+local startPosition = nil
 
 addConnection(Main.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -391,7 +431,7 @@ addConnection(Main.InputBegan:Connect(function(input)
 end))
 
 addConnection(UserInputService.InputChanged:Connect(function(input)
-    if not dragging then return end
+    if not dragging or not dragStart or not startPosition then return end
     
     if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then
         return
@@ -408,15 +448,19 @@ addConnection(UserInputService.InputChanged:Connect(function(input)
 end))
 
 --========================================================
--- PLAYER LIST
+-- PLAYER LIST FUNCTIONS
 --========================================================
 
-local function refreshPlayerList()
+local function clearPlayerList()
     for _, child in ipairs(PlayerList:GetChildren()) do
         if child:IsA("TextButton") then
-            child:Destroy()
+            pcall(function() child:Destroy() end)
         end
     end
+end
+
+local function refreshPlayerList()
+    clearPlayerList()
     
     local players = Players:GetPlayers()
     for _, player in ipairs(players) do
@@ -450,7 +494,9 @@ local function refreshPlayerList()
     end
     
     task.defer(function()
-        PlayerList.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 8)
+        pcall(function()
+            PlayerList.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 8)
+        end)
     end)
 end
 
@@ -458,7 +504,7 @@ addConnection(RefreshButton.MouseButton1Click:Connect(refreshPlayerList))
 refreshPlayerList()
 
 --========================================================
--- FOLLOW
+-- FOLLOW FUNCTIONS
 --========================================================
 
 local function stopFollow()
@@ -474,7 +520,10 @@ end
 
 local function startFollow()
     if followConnection then
-        followConnection:Disconnect()
+        pcall(function()
+            followConnection:Disconnect()
+        end)
+        followConnection = nil
     end
     
     followConnection = RunService.Heartbeat:Connect(function()
@@ -499,7 +548,7 @@ local function startFollow()
 end
 
 --========================================================
--- RESET
+-- RESET FUNCTIONS
 --========================================================
 
 local function resetCharacter()
@@ -514,13 +563,11 @@ local function resetCharacter()
     restoreCollision()
     restoreRootJoint()
     
-    humanoid.Health = 0
+    pcall(function()
+        humanoid.Health = 0
+    end)
     return true
 end
-
---========================================================
--- WAIT FOR RESPAWN
---========================================================
 
 local function waitForRespawn(oldCharacter)
     local timeout = 10
@@ -540,7 +587,7 @@ local function waitForRespawn(oldCharacter)
         end
         
         task.wait(0.1)
-        elapsed += 0.1
+        elapsed = elapsed + 0.1
     end
     
     return nil
@@ -610,12 +657,10 @@ local function teleportToPlayer(target)
     local targetPosition = targetHRP.Position - Vector3.new(0, 4, 0)
     local targetCFrame = CFrame.lookAt(targetPosition, targetHRP.Position)
     
-    -- Teleport using CFrame directly
     pcall(function()
         hrp.CFrame = targetCFrame
     end)
     
-    -- Wait for server to update
     task.wait(0.15)
     
     local success, result = checkTeleport(oldPosition, oldCharacter)
@@ -638,24 +683,21 @@ local function teleportToPlayer(target)
         return false
     end
     
-    -- Auto Reset logic
     local retryAttempts = 0
     
     while autoResetEnabled and not destroyed and not success and retryAttempts < MAX_TELEPORT_RETRIES do
-        retryAttempts += 1
-        retryCount += 1
+        retryAttempts = retryAttempts + 1
+        retryCount = retryCount + 1
         
         Status.Text = "Fake Tele → Reset #" .. retryCount
         
         local resetCharacterObject = getCharacter()
         if not resetCharacterObject then
             task.wait(0.5)
-            continue
         end
         
         if not resetCharacter() then
             task.wait(0.5)
-            continue
         end
         
         Status.Text = "Resetting..."
@@ -667,7 +709,7 @@ local function teleportToPlayer(target)
         end
         
         if not newCharacter then
-            continue
+            task.wait(0.5)
         end
         
         Status.Text = "Retrying teleport..."
@@ -679,7 +721,7 @@ local function teleportToPlayer(target)
         
         local newHRP = getHRP(newCharacter)
         if not newHRP then
-            continue
+            task.wait(0.5)
         end
         
         local targetChar = target.Character
@@ -783,7 +825,7 @@ local function runTeleportAll()
     local cycles = 0
     
     while teleAllEnabled and not destroyed and cycles < MAX_TELE_ALL_CYCLES do
-        cycles += 1
+        cycles = cycles + 1
         
         local players = {}
         for _, player in ipairs(Players:GetPlayers()) do
@@ -843,7 +885,8 @@ addConnection(TeleAllButton.MouseButton1Click:Connect(function()
     TeleAllButton.BackgroundColor3 = Color3.fromRGB(50, 180, 70)
     Status.Text = "Teleporting all..."
     
-    teleAllCoroutine = task.spawn(runTeleportAll)
+    teleAllCoroutine = coroutine.wrap(runTeleportAll)
+    teleAllCoroutine()
 end))
 
 --========================================================
@@ -867,13 +910,35 @@ addConnection(AutoResetButton.MouseButton1Click:Connect(function()
 end))
 
 --========================================================
+-- KEYBIND HIDE/SHOW UI
+--========================================================
+
+addConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == HIDE_KEY then
+        toggleUI()
+    end
+end))
+
+-- Click vào Status để ẩn/hiện UI
+addConnection(Status.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        task.wait(0.15)
+        if input.UserInputState == Enum.UserInputState.End then
+            toggleUI()
+        end
+    end
+end))
+
+--========================================================
 -- CHARACTER ADDED
 --========================================================
 
 addConnection(LocalPlayer.CharacterAdded:Connect(function(character)
     originalRootJoint = nil
     originalRootC0 = nil
-    table.clear(collisionBackup)
+    collisionBackup = {}
     
     task.wait(0.5)
     
@@ -927,33 +992,35 @@ end))
 -- GLOBAL CLEANUP
 --========================================================
 
-getgenv().PlayerTeleportMenuCleanup = function()
-    if destroyed or isCleaning then return end
-    isCleaning = true
-    destroyed = true
-    
-    lyingEnabled = false
-    teleAllEnabled = false
-    autoResetEnabled = false
-    
-    if followConnection then
-        pcall(function() followConnection:Disconnect() end)
-        followConnection = nil
+if getgenv then
+    getgenv().PlayerTeleportMenuCleanup = function()
+        if destroyed or isCleaning then return end
+        isCleaning = true
+        destroyed = true
+        
+        lyingEnabled = false
+        teleAllEnabled = false
+        autoResetEnabled = false
+        
+        if followConnection then
+            pcall(function() followConnection:Disconnect() end)
+            followConnection = nil
+        end
+        
+        teleAllCoroutine = nil
+        
+        restoreRootJoint()
+        restoreCollision()
+        restoreCamera()
+        
+        disconnectAll()
+        
+        if ScreenGui then
+            pcall(function() ScreenGui:Destroy() end)
+        end
+        
+        isCleaning = false
     end
-    
-    teleAllCoroutine = nil
-    
-    restoreRootJoint()
-    restoreCollision()
-    restoreCamera()
-    
-    disconnectAll()
-    
-    if ScreenGui then
-        pcall(function() ScreenGui:Destroy() end)
-    end
-    
-    isCleaning = false
 end
 
 --========================================================
@@ -961,3 +1028,5 @@ end
 --========================================================
 
 Status.Text = "Status: Ready"
+print("Teleport Control loaded successfully!")
+print("Press H to hide/show UI")
