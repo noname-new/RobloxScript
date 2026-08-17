@@ -75,6 +75,7 @@ local originalRootJoint = nil
 local originalRootC0 = nil
 
 local cameraAnchor = nil
+local cameraLockedForTeleAll = false
 
 --========================================================
 -- CHARACTER HELPERS
@@ -203,6 +204,7 @@ local function restoreCamera()
             cameraAnchor:Destroy()
         end)
         cameraAnchor = nil
+        cameraLockedForTeleAll = false
     end
     
     if camera then
@@ -798,7 +800,7 @@ addConnection(LyingButton.MouseButton1Click:Connect(function()
     if character then
         setLying(character, true)
         setCollision(character, false)
-        lockCamera()
+        -- KHÔNG khóa camera cho Lying Follow
     end
     
     LyingButton.Text = "Lying Follow: ON"
@@ -816,6 +818,11 @@ local function stopTeleAll()
     teleAllEnabled = false
     retryCount = 0
     
+    -- Chỉ restore camera nếu Tele All đang khóa camera
+    if cameraLockedForTeleAll then
+        restoreCamera()
+    end
+    
     if teleAllCoroutine then
         teleAllCoroutine = nil
     end
@@ -823,6 +830,10 @@ end
 
 local function runTeleportAll()
     local cycles = 0
+    
+    -- Khóa camera khi bắt đầu Tele All
+    lockCamera()
+    cameraLockedForTeleAll = true
     
     while teleAllEnabled and not destroyed and cycles < MAX_TELE_ALL_CYCLES do
         cycles = cycles + 1
@@ -859,6 +870,12 @@ local function runTeleportAll()
         if teleAllEnabled and not destroyed then
             task.wait(0.5)
         end
+    end
+    
+    -- Mở khóa camera khi kết thúc Tele All
+    if cameraLockedForTeleAll then
+        restoreCamera()
+        cameraLockedForTeleAll = false
     end
     
     if not destroyed then
@@ -947,13 +964,16 @@ addConnection(LocalPlayer.CharacterAdded:Connect(function(character)
     if lyingEnabled then
         setLying(character, true)
         setCollision(character, false)
-        lockCamera()
+        -- KHÔNG khóa camera cho Lying Follow khi respawn
         
         if selectedPlayer then
             startFollow()
         end
     else
-        restoreCamera()
+        -- Chỉ restore camera nếu không phải đang Tele All
+        if not cameraLockedForTeleAll then
+            restoreCamera()
+        end
     end
 end))
 
