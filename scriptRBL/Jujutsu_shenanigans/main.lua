@@ -1,5 +1,5 @@
 -- JujutsuerV2 hub
-loadstring(game:HttpGet("https://raw.githubusercontent.com/solarastuff/tze/refs/heads/main/JujutsuerV2.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/Jujutsu_shenanigans/jujutsuerV2.lua"))()
 
 -- TBO hub
 loadstring(game:HttpGet("https://raw.githubusercontent.com/cool5013/TBO/main/TBOscript"))()
