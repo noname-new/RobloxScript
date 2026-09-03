@@ -1,188 +1,550 @@
-local cloneref = (cloneref or clonereference or function(instance)
+--// =========================================
+--// AUTO GAME LOADER + RUNTIME
+--// Dark / Minimal / Auto Close
+--// =========================================
+
+local cloneref = cloneref or clonereference or function(instance)
     return instance
-end)
-
-local Players = cloneref(game:GetService("Players"))
-local VirtualUser = cloneref(game:GetService("VirtualUser"))
-local LPlayer = Players.LocalPlayer
-local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui")
-
-local Executor = "Unknown"
-
-pcall(function()
-    if identifyexecutor then
-        Executor = identifyexecutor()
-    elseif getexecutorname then
-        Executor = getexecutorname()
-    end
-end)
-
-local function ShowLoader(GameName, ScriptName)
-
-    local Gui = Instance.new("ScreenGui")
-    Gui.Name = "RobloxScriptLoader"
-    Gui.ResetOnSpawn = false
-
-    pcall(function()
-        Gui.Parent = CoreGui
-    end)
-
-    if not Gui.Parent then
-        Gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-    end
-
-    local Frame = Instance.new("Frame")
-    Frame.Parent = Gui
-    Frame.AnchorPoint = Vector2.new(0.5,0.5)
-    Frame.Position = UDim2.fromScale(0.5,0.5)
-    Frame.Size = UDim2.fromOffset(430,190)
-    Frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-    Frame.BorderSizePixel = 0
-    Frame.BackgroundTransparency = 1
-
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0,8)
-    Corner.Parent = Frame
-
-    local Stroke = Instance.new("UIStroke")
-    Stroke.Color = Color3.fromRGB(255,255,255)
-    Stroke.Thickness = 1
-    Stroke.Transparency = 1
-    Stroke.Parent = Frame
-
-    local Text = Instance.new("TextLabel")
-    Text.Parent = Frame
-    Text.Size = UDim2.new(1,-20,1,-20)
-    Text.Position = UDim2.fromOffset(10,10)
-    Text.BackgroundTransparency = 1
-    Text.TextXAlignment = Enum.TextXAlignment.Left
-    Text.TextYAlignment = Enum.TextYAlignment.Top
-    Text.Font = Enum.Font.Gotham
-    Text.TextSize = 16
-    Text.TextColor3 = Color3.new(1,1,1)
-    Text.TextTransparency = 1
-
-    Text.Text =
-        "RobloxScript Loader\n\n"..
-        "Executor : "..Executor.."\n"..
-        "Creator  : noname-new\n"..
-        "Game     : "..GameName.."\n"..
-        "Script   : "..ScriptName.."\n\n"..
-        "Loading..."
-
-    TweenService:Create(Frame,TweenInfo.new(0.25),{
-        BackgroundTransparency = 0
-    }):Play()
-
-    TweenService:Create(Stroke,TweenInfo.new(0.25),{
-        Transparency = 0
-    }):Play()
-
-    TweenService:Create(Text,TweenInfo.new(0.25),{
-        TextTransparency = 0
-    }):Play()
-
-    task.wait(2.5)
-
-    TweenService:Create(Frame,TweenInfo.new(0.25),{
-        BackgroundTransparency = 1
-    }):Play()
-
-    TweenService:Create(Stroke,TweenInfo.new(0.25),{
-        Transparency = 1
-    }):Play()
-
-    TweenService:Create(Text,TweenInfo.new(0.25),{
-        TextTransparency = 1
-    }):Play()
-
-    task.wait(0.3)
-
-    Gui:Destroy()
 end
 
-repeat task.wait() until game:IsLoaded() and LPlayer
+local Players = cloneref(game:GetService("Players"))
+local TweenService = cloneref(game:GetService("TweenService"))
+local VirtualUser = cloneref(game:GetService("VirtualUser"))
 
-LPlayer.Idled:Connect(function()
+repeat
+    task.wait()
+until game:IsLoaded() and Players.LocalPlayer
+
+local Player = Players.LocalPlayer
+
+--// =========================================
+--// ANTI AFK
+--// =========================================
+
+Player.Idled:Connect(function()
     pcall(function()
         VirtualUser:CaptureController()
         VirtualUser:ClickButton2(Vector2.new())
     end)
 end)
 
+--// =========================================
+--// LOADER CONFIG
+--// =========================================
+
 local Loader = {}
+
+-- THAY URL NÀY BẰNG REPO CỦA BẠN
+local GITHUB_BASE = "https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/"
 
 Loader.Files = {
     ["Blox Fruit"] = {
         File = "BLFR/main.lua",
         GameId = 994732206
     },
+
+    ["DOORS"] = {
+        File = "DOORS/main.lua",
+        GameId = 2440500124
+    },
+
+    ["BLADE BALL"] = {
+        File = "Blade_Ball/main.lua",
+        GameId = 4777817887
+    },
+
+    ["HONKAI STAR RAIL SIMULATOR"] = {
+        File = "Honkai_Star_Rail_Simulator/main.lua",
+        GameId = 5477548919
+    },
+
     ["The strongest Battlegrounds"] = {
         File = "The_strongest_Battlegrounds/main.lua",
         GameId = 3808081382
     },
+
     ["+1 Keyboard Speed chocolate"] = {
         File = "1_Keyboard_Speed/main.lua",
         GameId = 9584852943
     },
+
     ["Jujutsu Shenanigans"] = {
         File = "Jujutsu_shenanigans/main.lua",
         GameId = 3508322461
     },
+
     ["Animal Hospital"] = {
         File = "Animal_Hospital/main.lua",
         GameId = 10148749921
     },
+
     ["99 Night"] = {
         File = "99_Night/main.lua",
         GameId = 7326934954
     },
+
     ["Anime Expeditions"] = {
         File = "Anime_Expeditions/main.lua",
         GameId = 7613921865
     },
+
     ["Iron Soul"] = {
         File = "Iron_Soul/main.lua",
         GameId = 9910245722
-    },
+    }
 }
 
-print(game.GameId)
+--// =========================================
+--// GAME LOOKUP
+--// =========================================
 
-function Loader:LoadByGameId(GameId)
+function Loader:GetGame(gameId)
+    gameId = tonumber(gameId)
 
-    for GameName, Data in pairs(self.Files) do
-        print("Checking:", GameName, Data.GameId)
+    if not gameId then
+        return nil, nil
+    end
 
-        if Data.GameId == GameId then
-
-	    ShowLoader(GameName, Data.File)
-
-            print("Matched!")
-
-            local Url = "https://raw.githubusercontent.com/noname-new/RobloxScript/main/scriptRBL/" .. Data.File
-
-            print("Loading:", Url)
-
-            local Success, Result = pcall(function()
-                return loadstring(game:HttpGet(Url))()
-            end)
-
-            if Success then
-                print("✅ Loaded:", GameName)
-            else
-                warn("❌ Load failed:", Result)
-            end
-
-            return
+    for gameName, data in pairs(self.Files) do
+        if tonumber(data.GameId) == gameId then
+            return gameName, data
         end
     end
 
-    warn("UNSUPPORTED GAME")
+    return nil, nil
 end
 
-Loader:LoadByGameId(game.GameId)
-print("Loader is running")
+local CurrentGameId = tonumber(game.GameId) or 0
+local GameName, GameData = Loader:GetGame(CurrentGameId)
+
+print("[Loader] Game ID:", CurrentGameId)
+print("[Loader] Game:", GameName or "Unsupported")
+
+--// =========================================
+--// REMOVE OLD UI
+--// =========================================
+
+local function RemoveOldUI()
+    local PlayerGui = Player:FindFirstChildOfClass("PlayerGui")
+
+    if PlayerGui then
+        local old = PlayerGui:FindFirstChild("AutoGameLoader")
+        if old then
+            old:Destroy()
+        end
+    end
+
+    pcall(function()
+        local CoreGui = game:GetService("CoreGui")
+        local old = CoreGui:FindFirstChild("AutoGameLoader")
+        if old then
+            old:Destroy()
+        end
+    end)
+end
+
+RemoveOldUI()
+
+--// =========================================
+--// CREATE GUI
+--// =========================================
+
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "AutoGameLoader"
+Gui.ResetOnSpawn = false
+Gui.IgnoreGuiInset = true
+Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local GuiParented = false
+
+pcall(function()
+    Gui.Parent = Player:WaitForChild("PlayerGui")
+    GuiParented = Gui.Parent ~= nil
+end)
+
+if not GuiParented then
+    warn("[Loader] Failed to create UI")
+    return Loader
+end
+
+--// =========================================
+--// MAIN FRAME
+--// =========================================
+
+local Main = Instance.new("Frame")
+Main.Name = "Main"
+Main.Size = UDim2.fromOffset(360, 145)
+Main.Position = UDim2.fromScale(0.5, 0.5)
+Main.AnchorPoint = Vector2.new(0.5, 0.5)
+Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Main.BorderSizePixel = 0
+Main.Parent = Gui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = Main
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(45, 45, 45)
+MainStroke.Thickness = 1
+MainStroke.Parent = Main
+
+--// =========================================
+--// GAME NAME
+--// =========================================
+
+local GameLabel = Instance.new("TextLabel")
+GameLabel.Name = "GameName"
+GameLabel.BackgroundTransparency = 1
+GameLabel.Position = UDim2.fromOffset(22, 17)
+GameLabel.Size = UDim2.new(1, -44, 0, 27)
+
+GameLabel.Font = Enum.Font.GothamBold
+GameLabel.TextSize = 19
+GameLabel.TextXAlignment = Enum.TextXAlignment.Left
+GameLabel.TextYAlignment = Enum.TextYAlignment.Center
+GameLabel.TextColor3 = Color3.fromRGB(245, 245, 245)
+
+GameLabel.Text = GameName or "Unsupported Game"
+
+GameLabel.Parent = Main
+
+--// =========================================
+--// GAME ID
+--// =========================================
+
+local GameIdLabel = Instance.new("TextLabel")
+GameIdLabel.Name = "GameId"
+GameIdLabel.BackgroundTransparency = 1
+GameIdLabel.Position = UDim2.fromOffset(22, 45)
+GameIdLabel.Size = UDim2.new(1, -44, 0, 18)
+
+GameIdLabel.Font = Enum.Font.Gotham
+GameIdLabel.TextSize = 12
+GameIdLabel.TextXAlignment = Enum.TextXAlignment.Left
+GameIdLabel.TextYAlignment = Enum.TextYAlignment.Center
+GameIdLabel.TextColor3 = Color3.fromRGB(125, 125, 125)
+
+GameIdLabel.Text = "Game ID: " .. tostring(CurrentGameId)
+
+GameIdLabel.Parent = Main
+
+--// =========================================
+--// STATUS
+--// =========================================
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Name = "Status"
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Position = UDim2.fromOffset(22, 69)
+StatusLabel.Size = UDim2.new(1, -44, 0, 18)
+
+StatusLabel.Font = Enum.Font.GothamMedium
+StatusLabel.TextSize = 12
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatusLabel.TextYAlignment = Enum.TextYAlignment.Center
+StatusLabel.TextColor3 = Color3.fromRGB(175, 175, 175)
+
+StatusLabel.Text = "● Detecting..."
+
+StatusLabel.Parent = Main
+
+--// =========================================
+--// PROGRESS BACKGROUND
+--// =========================================
+
+local ProgressBack = Instance.new("Frame")
+ProgressBack.Name = "ProgressBack"
+ProgressBack.Position = UDim2.fromOffset(22, 105)
+ProgressBack.Size = UDim2.new(1, -44, 0, 5)
+
+ProgressBack.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+ProgressBack.BorderSizePixel = 0
+
+ProgressBack.Parent = Main
+
+local ProgressBackCorner = Instance.new("UICorner")
+ProgressBackCorner.CornerRadius = UDim.new(1, 0)
+ProgressBackCorner.Parent = ProgressBack
+
+--// =========================================
+--// PROGRESS
+--// =========================================
+
+local Progress = Instance.new("Frame")
+Progress.Name = "Progress"
+Progress.Size = UDim2.fromScale(0, 1)
+
+Progress.BackgroundColor3 = Color3.fromRGB(235, 235, 235)
+Progress.BorderSizePixel = 0
+
+Progress.Parent = ProgressBack
+
+local ProgressCorner = Instance.new("UICorner")
+ProgressCorner.CornerRadius = UDim.new(1, 0)
+ProgressCorner.Parent = Progress
+
+--// =========================================
+--// PERCENT
+--// =========================================
+
+local Percent = Instance.new("TextLabel")
+Percent.Name = "Percent"
+Percent.BackgroundTransparency = 1
+Percent.Position = UDim2.new(1, -55, 0, 117)
+Percent.Size = UDim2.fromOffset(55, 16)
+
+Percent.Font = Enum.Font.Gotham
+Percent.TextSize = 10
+Percent.TextXAlignment = Enum.TextXAlignment.Right
+Percent.TextYAlignment = Enum.TextYAlignment.Center
+Percent.TextColor3 = Color3.fromRGB(100, 100, 100)
+
+Percent.Text = "0%"
+
+Percent.Parent = Main
+
+--// =========================================
+--// UI FUNCTIONS
+--// =========================================
+
+local Closing = false
+
+local function SetStatus(text)
+    if StatusLabel and StatusLabel.Parent then
+        StatusLabel.Text = "● " .. tostring(text)
+    end
+end
+
+local function SetProgress(value)
+    value = math.clamp(tonumber(value) or 0, 0, 1)
+
+    if not Progress or not Progress.Parent then
+        return
+    end
+
+    TweenService:Create(
+        Progress,
+        TweenInfo.new(
+            0.25,
+            Enum.EasingStyle.Quart,
+            Enum.EasingDirection.Out
+        ),
+        {
+            Size = UDim2.fromScale(value, 1)
+        }
+    ):Play()
+
+    if Percent and Percent.Parent then
+        Percent.Text = string.format(
+            "%d%%",
+            math.floor(value * 100 + 0.5)
+        )
+    end
+end
+
+--// =========================================
+--// FADE OUT + DESTROY
+--// =========================================
+
+local function CloseUI()
+    if Closing then
+        return
+    end
+
+    Closing = true
+
+    if not Gui or not Gui.Parent then
+        return
+    end
+
+    local TweenInfoOut = TweenInfo.new(
+        0.35,
+        Enum.EasingStyle.Quad,
+        Enum.EasingDirection.In
+    )
+
+    -- Main
+    TweenService:Create(
+        Main,
+        TweenInfoOut,
+        {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromScale(0.5, 0.48)
+        }
+    ):Play()
+
+    -- Children
+    for _, object in ipairs(Main:GetDescendants()) do
+
+        if object:IsA("TextLabel") then
+
+            TweenService:Create(
+                object,
+                TweenInfoOut,
+                {
+                    TextTransparency = 1
+                }
+            ):Play()
+
+        elseif object:IsA("Frame") then
+
+            TweenService:Create(
+                object,
+                TweenInfoOut,
+                {
+                    BackgroundTransparency = 1
+                }
+            ):Play()
+
+        elseif object:IsA("UIStroke") then
+
+            TweenService:Create(
+                object,
+                TweenInfoOut,
+                {
+                    Transparency = 1
+                }
+            ):Play()
+
+        end
+    end
+
+    task.wait(0.4)
+
+    if Gui and Gui.Parent then
+        Gui:Destroy()
+    end
+end
+
+--// =========================================
+--// RUNTIME LOADER - GITHUB RAW (FIXED)
+--// =========================================
+
+local function LoadScript(name, data, progressCallback)
+    if not data or not data.File then
+        return false, "Invalid game data"
+    end
+
+    print("[Loader] Loading:", name)
+    print("[Loader] File:", data.File)
+
+    if progressCallback then
+        progressCallback(0.65)
+    end
+
+    -- Tạo URL từ GitHub
+    local url = GITHUB_BASE .. data.File
+    print("[Loader] Fetching:", url)
+
+    -- Tải script
+    local success, content = pcall(function()
+        return game:HttpGet(url)
+    end)
+
+    if not success then
+        return false, "Failed to fetch script: " .. tostring(content)
+    end
+
+    if not content or content == "" then
+        return false, "Script content is empty"
+    end
+
+    if progressCallback then
+        progressCallback(0.80)
+    end
+
+    -- Compile script
+    local fn, err = loadstring(content)
+
+    if not fn then
+        return false, "Failed to compile script: " .. tostring(err)
+    end
+
+    if progressCallback then
+        progressCallback(0.90)
+    end
+
+    -- Chạy script
+    local ok, result = pcall(fn)
+
+    if not ok then
+        return false, "Script execution failed: " .. tostring(result)
+    end
+
+    if progressCallback then
+        progressCallback(1)
+    end
+
+    return true, result
+end
+
+--// =========================================
+--// AUTO LOAD
+--// =========================================
+
+task.spawn(function()
+
+    -- Detecting
+    SetStatus("Detecting...")
+    SetProgress(0.10)
+
+    task.wait(0.35)
+
+    -- Game check
+    if not GameName or not GameData then
+
+        SetStatus("Unsupported")
+        SetProgress(1)
+
+        task.wait(1)
+
+        CloseUI()
+
+        return
+    end
+
+    -- Detected
+    SetStatus("Game detected: " .. GameName)
+    SetProgress(0.35)
+
+    task.wait(0.25)
+
+    -- Loading
+    SetStatus("Loading " .. GameName .. "...")
+    SetProgress(0.50)
+
+    local success, result = LoadScript(
+        GameName,
+        GameData,
+        function(progress)
+            SetProgress(progress)
+        end
+    )
+
+    if not success then
+
+        warn("[Loader] Load failed:", tostring(result))
+
+        SetStatus("Failed: " .. tostring(result))
+        SetProgress(1)
+
+        task.wait(1.5)
+
+        CloseUI()
+
+        return
+    end
+
+    -- Loaded
+    SetStatus("✅ Loaded successfully!")
+    SetProgress(1)
+
+    task.wait(0.7)
+
+    CloseUI()
+end)
+
+print("[Loader] Auto Loader is running...")
 
 return Loader
