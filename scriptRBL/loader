@@ -117,6 +117,10 @@ end
 
 Loader:LoadByGameId(game.GameId)
 
+loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/pointer/pointer.lua"))()
+
 print("Loader is running")
+print("Custom portal fruit from blox fruit is running")
+print("find more cursor on https://custom-cursor.world/ ")
 
 return Loader
