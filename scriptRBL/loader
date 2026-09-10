@@ -46,6 +46,11 @@ Loader.Files = {
         GameId = 3808081382
     },
 
+    ["Steal An Egg"] = {
+        File = "steal_an_egg/main.lua",
+        GameId = 10563114921
+    },
+
     ["+1 Keyboard Speed chocolate"] = {
         File = "1_Keyboard_Speed/main.lua",
         GameId = 9584852943
