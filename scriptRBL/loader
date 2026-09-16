@@ -1,3 +1,7 @@
+print(" I don't own these scripts. I just found them and made a loader for the one I think is the best. ")
+print(" Some games have more than one script made by me. For example, in JJS, there are 3 scripts: TBO Hub, Jujutsu Rev2, and Script Lying Player by me (the logic is based on BankaiDZ). ")
+print(" For TB, I have Vexon Hub and a Kill Farm script. ")
+
 local cloneref = cloneref or clonereference or function(instance)
     return instance
 end
