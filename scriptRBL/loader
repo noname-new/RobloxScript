@@ -25,6 +25,11 @@ end)
 local Loader = {}
 
 Loader.Files = {
+    ["zombie rush survie"] = {
+        File = "zombie_rush_survie/main.lua",
+        GameId = 10138624079
+    },
+
     ["Blox Fruit"] = {
         File = "BLFR/main.lua",
         GameId = 994732206
