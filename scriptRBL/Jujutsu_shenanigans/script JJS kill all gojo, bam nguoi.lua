@@ -54,7 +54,7 @@ local BYPASS_CHECK_DELAY = 0.1
 
 local FOLLOW_DISTANCE = 4
 
-local SWEEP_DISTANCE = 500
+local SWEEP_DISTANCE = 1000
 local SWEEP_OFFSET = 2.5
 local SWEEP_TIME = 0.01
 
@@ -1011,7 +1011,7 @@ end
 -- SWEEP ALL - ĐÚNG LOGIC CODE GỐC
 -- ============================================================
 
-local function runSweepOnce()
+local function runSweepLoop()
 
     if sweepRunning then
         return
@@ -1021,55 +1021,60 @@ local function runSweepOnce()
 
     task.spawn(function()
 
-        local character = getCharacter()
-        local myHRP = getHRP(character)
-        local humanoid = getHumanoid(character)
+        while sweepAllEnabled and not destroyed do
 
-        if myHRP
-            and humanoid
-            and humanoid.Health > 0 then
+            local character = getCharacter()
+            local myHRP = getHRP(character)
+            local humanoid = getHumanoid(character)
 
-            local targets =
-                getSweepTargets()
+            if myHRP
+                and humanoid
+                and humanoid.Health > 0 then
 
-            if #targets == 0 then
+                local targets = getSweepTargets()
 
-                Status.Text =
-                    "No targets within " ..
-                    SWEEP_DISTANCE
+                if #targets == 0 then
+                    Status.Text =
+                        "No targets within " ..
+                        SWEEP_DISTANCE
 
-            else
+                    task.wait(0.2)
+                else
 
-                local count = 0
+                    local count = 0
 
-                for _, targetHRP in ipairs(targets) do
+                    for _, targetHRP in ipairs(targets) do
 
-                    if not sweepAllEnabled
-                        or destroyed then
-                        break
+                        if not sweepAllEnabled
+                            or destroyed then
+                            break
+                        end
+
+                        if targetHRP
+                            and targetHRP.Parent then
+
+                            if teleportBehind(targetHRP) then
+                                count = count + 1
+                            end
+
+                            Status.Text =
+                                "Sweep: " ..
+                                count ..
+                                "/" ..
+                                #targets
+
+                            task.wait(SWEEP_TIME)
+                        end
                     end
 
-                    if targetHRP
-                        and targetHRP.Parent then
-
-                        teleportBehind(targetHRP)
-
-                        count = count + 1
-
-                        Status.Text =
-                            "Sweep: " ..
-                            count ..
-                            "/" ..
-                            #targets
-
+                    if sweepAllEnabled
+                        and not destroyed then
                         task.wait(SWEEP_TIME)
                     end
                 end
 
-                Status.Text =
-                    "Sweep completed: " ..
-                    count ..
-                    " targets"
+            else
+                task.wait(0.2)
             end
         end
 
@@ -1104,7 +1109,7 @@ addConnection(
 
             -- Nếu Auto đang ON thì Auto Loop tự quản lý
             if not autoLoopEnabled then
-                runSweepOnce()
+                runSweepLoop()
             end
 
         else
