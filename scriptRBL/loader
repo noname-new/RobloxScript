@@ -30,6 +30,11 @@ Loader.Files = {
         GameId = 10138624079
     },
 
+    ["Dandy world"] = {
+        File = "dandy_world/main.lua",
+        GameId = 5569032992
+    },
+
     ["Blox Fruit"] = {
         File = "BLFR/main.lua",
         GameId = 994732206
