@@ -25,7 +25,7 @@ end)
 local Loader = {}
 
 Loader.Files = {
-    ["zombie rush survie"] = {
+    ["zombie rush survival"] = {
         File = "zombie_rush_survie/main.lua",
         GameId = 10138624079
     },
