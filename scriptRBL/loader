@@ -132,7 +132,7 @@ end
 Loader:LoadByGameId(game.GameId)
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/pointer/pointer.lua"))()
-loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/unc_test.lua")) --test unc
+loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/unc_test.lua"))() --test unc
 
 print("Loader is running")
 print("Custom portal fruit from Blox Fruits is running, I guess =)) IDK, sorry.")
