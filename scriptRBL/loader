@@ -1,6 +1,6 @@
-print("I don't own these scripts. I just found them and made a loader for the ones I think are the best.")
+print("I don't own all of these scripts. I just found them and made a loader for the ones I think are the best.")
 print("Some games have more than one script made by me. For example, JJS has 3 scripts: TBO Hub, Jujutsu Rev2, and Script Lying Player by me (the logic is based on BankaiDZ).")
-print("For TB, I have Vexon Hub and a Kill Farm script.")
+print("now i have script zombie rush survival and script dandy world")
 
 local cloneref = cloneref or clonereference or function(instance)
     return instance
