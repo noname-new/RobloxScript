@@ -2,8 +2,8 @@
 --loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/Jujutsu_shenanigans/jujutsuerV2.lua"))()
 --task.wait(10) -- Chờ 10 giây
 
-print("jujutsuerV2 is bug now")
-print("use TBO crack pre and kill all 0,2 gojo ")
+--print("jujutsuerV2 is bug now")
+--print("use TBO crack pre and kill all 0,2 gojo ")
 
 -- TBO hub
 --loadstring(game:HttpGet("https://raw.githubusercontent.com/cool5013/TBO/main/TBOscript"))()
