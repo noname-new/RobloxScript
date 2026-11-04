@@ -4,7 +4,8 @@
 
 --print("jujutsuerV2 is bug now")
 --print("use TBO crack pre and kill all 0,2 gojo ")
-
+print("I GOT BAN ON TBO COMMUNITY =))))) ")
+print("my discord name : chobomayxinnhe ")
 -- TBO hub
 --loadstring(game:HttpGet("https://raw.githubusercontent.com/cool5013/TBO/main/TBOscript"))()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/Jujutsu_shenanigans/TBOscript_backup.lua"))()
