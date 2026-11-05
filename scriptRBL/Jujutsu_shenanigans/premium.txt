@@ -1,3 +1,6 @@
 return {
-    game.Players.LocalPlayer.UserId
+    11925797578,
+    3256216544,
+    969699639,
+    11903457340
 }
