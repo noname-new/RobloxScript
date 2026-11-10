@@ -139,6 +139,7 @@ end
 Loader:LoadByGameId(game.GameId)
 
 pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/msg/msg.lua"))()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/pointer/pointer.lua"))()
     --loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/unc_test.lua"))() --test unc
 end)
