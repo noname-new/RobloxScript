@@ -2,8 +2,10 @@
 -- loadstring(game:HttpGet("https://raw.githubusercontent.com/tranduykhanh08428-web/VantablackHub/refs/heads/main/VantablackHub.lua.txt"))()
 
 --bananacat chết rồi thì để tày hub
+--banana lại nữa
+loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/BLFR/bana.lua"))()
 --Banana Hub nhưng đổi tên và đổi UI
-loadstring(game:HttpGet("https://raw.githubusercontent.com/VTDROBLOX/Animehub/refs/heads/main/Tayhub-PREMIUM.lua"))()
+--loadstring(game:HttpGet("https://raw.githubusercontent.com/VTDROBLOX/Animehub/refs/heads/main/Tayhub-PREMIUM.lua"))()
 
 --khoan, còn cái bananacat crack này :
 --[[ mà thôi bỏ đi
