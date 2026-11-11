@@ -1,2 +1,2 @@
 msg(10867535180) :
-    nd : "Hey, just checking in — is everything okay? "
+    nd : "Hey, just checking in — is everything okay?, tell me on rscript "
