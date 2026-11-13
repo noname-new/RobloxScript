@@ -7,6 +7,10 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScri
 --Banana Hub nhưng đổi tên và đổi UI
 --loadstring(game:HttpGet("https://raw.githubusercontent.com/VTDROBLOX/Animehub/refs/heads/main/Tayhub-PREMIUM.lua"))()
 
+--[[
+repeat task.wait() until game:IsLoaded() and game:GetService("Players") and game.Players.LocalPlayer and game.Players.LocalPlayer:FindFirstChild("PlayerGui")
+loadstring(game:HttpGet("https://raw.githubusercontent.com/teddyhubdev/diepvy/refs/heads/main/TeddyHub.lua"))()
+]]
 --khoan, còn cái bananacat crack này :
 --[[ mà thôi bỏ đi
 getgenv().Key = "discord.gg/U9Dduzxrf7   ";
