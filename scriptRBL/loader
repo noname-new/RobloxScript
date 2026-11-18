@@ -140,12 +140,10 @@ Loader:LoadByGameId(game.GameId)
 
 pcall(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/msg/msg.lua"))()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/pointer/pointer.lua"))()
+    --loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/pointer/pointer.lua"))()
     --loadstring(game:HttpGet("https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/unc_test.lua"))() --test unc
 end)
 
 print("Loader is running")
-print("Custom portal fruit from Blox Fruits is running, I guess =)) IDK, sorry.")
-print("Find more cursors at https://custom-cursor.world/")
 
 return Loader
