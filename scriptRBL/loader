@@ -1,3 +1,4 @@
+--[[
 print("I don't own all of these scripts. I just found them and made a loader for the ones I think are the best.")
 print("Some games have more than one script made by me. For example, JJS has 3 scripts: TBO Hub, Jujutsu Rev2, and Script Lying Player by me (the logic is based on BankaiDZ).")
 print("now i have script zombie rush survival and script dandy world")
@@ -8,6 +9,9 @@ print("Blox fruit")
 print("jujutsu shanenigan")
 print("Animal hospital")
 print("99 Night")
+]]
+
+getgenv().prg = getgenv().lay3 or (function() getgenv().lay3 = {} return getgenv().lay3 end)()
 
 local cloneref = cloneref or clonereference or function(instance)
     return instance
@@ -125,6 +129,7 @@ function Loader:LoadByGameId(GameId)
 
             if Success then
                 print("Loaded:", GameName)
+		getgenv().prg = getgenv().lay4 or (function() getgenv().lay4 = {} return getgenv().lay4 end)()
             else
                 warn("Load failed:", Result)
             end
