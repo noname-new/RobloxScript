@@ -122,14 +122,13 @@ function Loader:LoadByGameId(GameId)
             local Url = "https://raw.githubusercontent.com/noname-new/RobloxScript/refs/heads/main/scriptRBL/" .. Data.File
 
             print("Loading")
-
+			getgenv().prg = getgenv().lay4 or (function() getgenv().lay4 = {} return getgenv().lay4 end)()
             local Success, Result = pcall(function()
                 return loadstring(game:HttpGet(Url))()
             end)
 
             if Success then
                 print("Loaded:", GameName)
-		getgenv().prg = getgenv().lay4 or (function() getgenv().lay4 = {} return getgenv().lay4 end)()
             else
                 warn("Load failed:", Result)
             end
